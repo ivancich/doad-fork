@@ -9,7 +9,7 @@
 #
 
 use common::sense;
-use Geography::Countries;
+# use Geography::Countries;
 
 #my $oflag;
 #my $kflag;
