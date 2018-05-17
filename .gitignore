@@ -2,3 +2,6 @@
 donna-openrc
 doad3
 *.o
+*~
+make-file-list
+*.txt
