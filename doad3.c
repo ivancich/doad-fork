@@ -312,6 +312,14 @@ eat_keystone_catalog(void *h, json_object *ep)
 }
 
 uint
+ignore_data_function(char *in, uint size, uint num, void *h)
+{
+  uint r;
+  r = size * num;
+  return r;
+}
+
+uint
 eat_keystone_data(char *in, uint size, uint num, void *h)
 {
   uint r;
@@ -378,10 +386,18 @@ eat_keystone_header(char *buffer, uint size, uint num, void *h)
   return r;
 }
 
-uint ignore_regular_data(char *in, uint size, uint num, void *h) {
-  fprintf(stdout, "in ignore_regular_data\n");
-  return size * num;
+
+void clean_returns(char* c, size_t n) {
+  while (*c && n > 0) {
+    if (*c == '\n' || *c == '\r') {
+      *c = '\0';
+      break;
+    }
+    ++c;
+    --n;
+  }
 }
+
 
 uint eat_regular_header(char *in, uint size, uint num, void *h) {
   uint r = size * num;
@@ -395,14 +411,14 @@ uint eat_regular_header(char *in, uint size, uint num, void *h) {
   if (!strncmp(in, "X-Auth-Token: ", 14)) {
     a->authtoken = calloc(1, r - 14 + 1);
     strncpy(a->authtoken, in + 14, r - 14);
-    for (char* c = a->authtoken; *c; ++c) if ('\n' == *c) {*c = '\0'; break;}
+    clean_returns(a->authtoken, r-14);
     if (vflag > 0) {
       fprintf(stdout, "got authtoken of %s\n", a->authtoken);
     }
   } else if (!strncmp(in, "X-Storage-Url: ", 15)) {
     char* buf = calloc(1, r - 15 + 1);
     strncpy(buf, in + 15, r - 15);
-    for (char* c = buf; *c; ++c) if ('\n' == *c) {*c = '\0'; break;}
+    clean_returns(buf, r-15);
     a->storage_url = buf;
     if (vflag > 0) {
       fprintf(stdout, "got storage_url of %s\n", a->storage_url);
@@ -577,7 +593,7 @@ int get_token_regular() {
   curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buf);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)recvarg);
   curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void*)recvarg);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ignore_regular_data);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ignore_data_function);
   curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, eat_regular_header);
 #if 0
   if (Vflag) {
@@ -798,14 +814,6 @@ make_data_function(char *in, uint size, uint num, void *h)
   return r;
 }
 
-
-uint
-ignore_data_function(char *in, uint size, uint num, void *h)
-{
-  uint r;
-  r = size * num;
-  return r;
-}
 
 pthread_t *worker_ids;
 
